@@ -7,3 +7,9 @@ DESCRIPTION='moreutils is a growing collection of the unix tools that nobody
 thought to write long ago when unix was young.'
 HOMEPAGE='https://joeyh.name/code/moreutils/'
 SRC_URI="https://git.joeyh.name/index.cgi/${PN}.git/snapshot/${PN}-${PV}.tar.gz"
+
+src_compile () {
+	lndirs
+	cd "${B}"
+	cygmake
+}
