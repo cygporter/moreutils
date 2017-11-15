@@ -1,0 +1,9 @@
+NAME=moreutils
+VERSION=0.61
+RELEASE=1
+CATEGORY=Utils
+SUMMARY='A collection of unix tools that nobody thought to write long ago'
+DESCRIPTION='moreutils is a growing collection of the unix tools that nobody
+thought to write long ago when unix was young.'
+HOMEPAGE='https://joeyh.name/code/moreutils/'
+SRC_URI="https://git.joeyh.name/index.cgi/${PN}.git/snapshot/${PN}-${PV}.tar.gz"
