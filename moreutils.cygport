@@ -8,6 +8,8 @@ thought to write long ago when unix was young.'
 HOMEPAGE='https://joeyh.name/code/moreutils/'
 SRC_URI="https://git.joeyh.name/index.cgi/${PN}.git/snapshot/${PN}-${PV}.tar.gz"
 
+DEPEND='perl(IPC::Run)'
+
 src_compile () {
 	lndirs
 	cd "${B}"
