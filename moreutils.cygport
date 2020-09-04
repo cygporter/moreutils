@@ -1,5 +1,5 @@
 NAME=moreutils
-VERSION=0.62
+VERSION=0.64
 RELEASE=1
 CATEGORY=Utils
 SUMMARY='A collection of unix tools that nobody thought to write long ago'
