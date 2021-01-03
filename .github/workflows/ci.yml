@@ -1,0 +1,61 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  ci:
+    strategy:
+      matrix:
+        platform: [x86, x64]
+    runs-on: windows-latest
+    steps:
+      - name: Install Cygwin packages
+        uses: egor-tensin/setup-cygwin@v2
+        with:
+          platform: ${{ matrix.platform }}
+          packages: git cygport docbook-xsl perl-IPC-Run libxslt
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Generate cygcheck output
+        run: |
+          C:\tools\cygwin\bin\bash.exe -c 'cygcheck -srv >/var/log/cygcheck.out'
+        if: always()
+      - name: Store Chocolatey logs
+        uses: actions/upload-artifact@v2
+        with:
+          name: choco-logs-${{ matrix.platform }}
+          path: 'C:\ProgramData\chocolatey\logs\'
+        if: always()
+      - name: Store Cygwin logs
+        uses: actions/upload-artifact@v2
+        with:
+          name: cygwin-logs-${{ matrix.platform }}
+          path: 'C:\tools\cygwin\var\log\'
+        if: always()
+      - name: Cygport download
+        run: |
+          C:\tools\cygwin\bin\bash.exe -c 'cygport moreutils.cygport download'
+      - name: Cygport prep
+        run: |
+          C:\tools\cygwin\bin\bash.exe -c 'cygport moreutils.cygport prep'
+      - name: Cygport compile
+        run: |
+          C:\tools\cygwin\bin\bash.exe -c 'cygport moreutils.cygport compile'
+      - name: Cygport test
+        run: |
+          C:\tools\cygwin\bin\bash.exe -c 'cygport moreutils.cygport test'
+      - name: Cygport install
+        run: |
+          C:\tools\cygwin\bin\bash.exe -c 'cygport moreutils.cygport install'
+      - name: Cygport package
+        run: |
+          C:\tools\cygwin\bin\bash.exe -c 'cygport moreutils.cygport package'
+      - name: Tar up build results
+        run: |
+          C:\tools\cygwin\bin\bash.exe -c 'tar -caf moreutils-${{ matrix.platform }}.txz moreutils-*-*.*/'
+      - name: Store build results
+        uses: actions/upload-artifact@v2
+        with:
+          name: build-results-${{ matrix.platform }}
+          path: |
+            moreutils-${{ matrix.platform }}.txz
+          if-no-files-found: error
+        if: always()
