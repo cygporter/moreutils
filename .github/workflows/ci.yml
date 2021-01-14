@@ -51,6 +51,7 @@ jobs:
       - name: Tar up build results
         run: |
           C:\tools\cygwin\bin\bash.exe -c 'tar -caf moreutils-${{ matrix.platform }}.txz moreutils-*-*.*/'
+        if: always()
       - name: Store build results
         uses: actions/upload-artifact@v2
         with:
