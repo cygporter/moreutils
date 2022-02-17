@@ -15,3 +15,8 @@ src_compile () {
 	cd "${B}"
 	cygmake
 }
+
+src_test () {
+	cd "${B}"
+	make -k check
+}
