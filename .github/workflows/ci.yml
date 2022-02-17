@@ -1,7 +1,8 @@
 name: CI
 on: [push, pull_request]
 jobs:
-  ci:
+
+  build-test:
     strategy:
       matrix:
         platform: [x86, x64]
@@ -60,37 +61,9 @@ jobs:
           echo "$MAINTAINER_KEY" >~/.ssh/id_rsa
           echo 'cygwin.com,8.43.85.97 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBGqrxexIuyqmCVe33p1HuhUFzsXte5QZKb+BJlsRrvXOpUOJEW2S0kszyAiymeV7AXaYmHDKVRJpGVR+0ua0Xww=' >~/.ssh/known_hosts
         timeout-minutes: 1
-      - name: Compute release name
+      - name: Cygport stage
         if: github.ref == 'refs/heads/main'
-        id: release-name
-        run: |
-          eval $(grep -e '^VERSION=' -e '^RELEASE=' moreutils.cygport)
-          printf '::set-output name=release::v%s-%s' "$VERSION" "$RELEASE"
-        timeout-minutes: 1
-      - name: Create release tag
-        if: github.ref == 'refs/heads/main'
-        env:
-          GIT_COMMITTER_NAME: ${{ github.actor }}
-          GIT_COMMITTER_EMAIL: ${{ github.actor }}@users.noreply.github.com
-        run: |
-          git tag -am '${{ steps.release-name.outputs.release }}' '${{ steps.release-name.outputs.release }}'
-          git push origin tag '${{ steps.release-name.outputs.release }}'
-        timeout-minutes: 1
-      - name: Create a GitHub release
-        if: github.ref == 'refs/heads/main'
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ steps.release-name.outputs.release }}
-          files: moreutils-*/dist/moreutils/*
-          target_commitish: ${{ github.ref }}
-        timeout-minutes: 2
-      - name: Mirror to Cygwin Git repositories
-        if: github.ref == 'refs/heads/main'
-        run: git push cygwin@cygwin.com:/git/cygwin-packages/moreutils '${{ steps.release-name.outputs.release }}'
-        timeout-minutes: 5
-      - name: Cygport upload
-        if: github.ref == 'refs/heads/main'
-        run: SSH_KEY=~/.ssh/id_rsa cygport moreutils.cygport upload
+        run: SSH_KEY=~/.ssh/id_rsa cygport moreutils.cygport stage
         timeout-minutes: 5
       - name: Tar up build results
         if: always()
@@ -103,4 +76,86 @@ jobs:
           name: build-results-${{ matrix.platform }}
           path: moreutils-${{ matrix.platform }}.txz
           if-no-files-found: error
+        timeout-minutes: 5
+
+  release:
+    if: github.ref == 'refs/heads/main'
+    needs: build-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install lftp
+        run: |
+          sudo apt-get update
+          sudo apt-get install lftp
+        timeout-minutes: 5
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+        timeout-minutes: 1
+      - name: Compute release name
+        id: release-name
+        run: |
+          eval $(grep -e '^VERSION=' -e '^RELEASE=' moreutils.cygport)
+          printf '::set-output name=release::%s-%s' "$VERSION" "$RELEASE"
+        timeout-minutes: 1
+      - name: Download build results
+        uses: actions/download-artifact@v2
+        timeout-minutes: 5
+      - name: Unpack build results
+        run: |
+          tar -xaf build-results-x86/moreutils-x86.txz
+          tar -xaf build-results-x64/moreutils-x64.txz
+        timeout-minutes: 5
+      - name: Name release artifacts for the GitHub release
+        env:
+          PVR: ${{ steps.release-name.outputs.release }}
+        run: |
+          (
+            cd "moreutils-${PVR}.i686/dist/moreutils" &&
+            rm "moreutils-${PVR}-src".* &&
+            mv "moreutils-${PVR}.hint" "moreutils-${PVR}.i686.hint" &&
+            mv "moreutils-${PVR}.tar.xz" "moreutils-${PVR}.i686.tar.xz"
+          )
+          (
+            cd "moreutils-${PVR}.x86_64/dist/moreutils" &&
+            mv "moreutils-${PVR}.hint" "moreutils-${PVR}.x86_64.hint" &&
+            mv "moreutils-${PVR}.tar.xz" "moreutils-${PVR}.x86_64.tar.xz"
+          )
+        timeout-minutes: 1
+      - name: Create release tag
+        env:
+          GIT_COMMITTER_NAME: ${{ github.actor }}
+          GIT_COMMITTER_EMAIL: ${{ github.actor }}@users.noreply.github.com
+        run: |
+          git tag -am 'v${{ steps.release-name.outputs.release }}' 'v${{ steps.release-name.outputs.release }}'
+          git push origin tag 'v${{ steps.release-name.outputs.release }}'
+        timeout-minutes: 1
+      - name: Create a GitHub release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.release-name.outputs.release }}-test
+          files: moreutils-*/dist/moreutils/*
+          target_commitish: ${{ github.ref }}
+        timeout-minutes: 2
+      - name: Configure SSH
+        env:
+          MAINTAINER_KEY: ${{ secrets.MAINTAINER_KEY }}
+        run: |
+          umask 0077
+          mkdir -p ~/.ssh
+          echo "$MAINTAINER_KEY" >~/.ssh/id_rsa
+          echo 'cygwin.com,8.43.85.97 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBGqrxexIuyqmCVe33p1HuhUFzsXte5QZKb+BJlsRrvXOpUOJEW2S0kszyAiymeV7AXaYmHDKVRJpGVR+0ua0Xww=' >~/.ssh/known_hosts
+        timeout-minutes: 1
+      - name: Mirror to Cygwin Git repositories
+        run: git push cygwin@cygwin.com:/git/cygwin-packages/moreutils 'v${{ steps.release-name.outputs.release }}'
+        timeout-minutes: 5
+      - name: Release on the Cygwin mirror
+        run: >
+          lftp -c 'set cmd:fail-exit on;
+                   set cmd:interactive on;
+                   set net:max-retries 1;
+                   open sftp://cygwin:@cygwin.com;
+                   put /dev/null -o /x86/release/moreutils/!ready;
+                   put /dev/null -o /x86_64/release/moreutils/!ready;'
         timeout-minutes: 5
