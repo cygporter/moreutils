@@ -148,7 +148,6 @@ jobs:
           echo 'cygwin.com,8.43.85.97 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBGqrxexIuyqmCVe33p1HuhUFzsXte5QZKb+BJlsRrvXOpUOJEW2S0kszyAiymeV7AXaYmHDKVRJpGVR+0ua0Xww=' >~/.ssh/known_hosts
         timeout-minutes: 1
       - name: Mirror to Cygwin Git repositories
-        if: false
         run: git push cygwin@cygwin.com:/git/cygwin-packages/moreutils 'v${{ steps.release-name.outputs.release }}'
         timeout-minutes: 5
       - name: Release on the Cygwin mirror
