@@ -134,7 +134,7 @@ jobs:
       - name: Create a GitHub release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v${{ steps.release-name.outputs.release }}-test
+          tag_name: v${{ steps.release-name.outputs.release }}
           files: moreutils-*/dist/moreutils/*
           target_commitish: ${{ github.ref }}
         timeout-minutes: 2
