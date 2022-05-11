@@ -19,8 +19,13 @@ jobs:
           platform: ${{ matrix.platform }}
           packages: cygport git docbook-xsl libxslt perl-IPC-Run xz
         timeout-minutes: 10
+      - name: Manually configure safe.directory
+        run: git config --global --add safe.directory '*'
+        timeout-minutes: 1
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
+        with:
+          set-safe-directory: false  # actions/checkout otherwise tries to use the wrong config file, per actions/checkout#767
         timeout-minutes: 1
       - name: Generate cygcheck output
         if: always()
